@@ -1,0 +1,1310 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Syllabalance</title>
+
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='style.css') }}"
+    >
+
+    <script>
+        const storedTheme =
+            localStorage.getItem("syllabalance-theme") || "dark";
+
+        document.documentElement.setAttribute(
+            "data-theme",
+            storedTheme
+        );
+    </script>
+</head>
+
+<body>
+    <section id="profile-page" class="profile-page">
+        <div class="profile-content">
+            <p class="brand">Syllabalance</p>
+
+            <h1>Build a study plan around the time you have.</h1>
+
+            <p class="profile-introduction">
+                Add your courses, deadlines, and available hours.
+                Syllabalance will rank your priorities and divide
+                your study time.
+            </p>
+
+            <form id="profile-form" class="profile-form">
+                <div class="field">
+                    <label for="profile-name">
+                        What should I call you?
+                    </label>
+
+                    <input
+                        id="profile-name"
+                        type="text"
+                        placeholder="Your first name"
+                        maxlength="30"
+                        autocomplete="given-name"
+                        required
+                    >
+                </div>
+
+                <fieldset class="mode-selector">
+                    <legend>Choose a motivation style</legend>
+
+                    <label class="mode-choice">
+                        <input
+                            type="radio"
+                            name="motivation-mode"
+                            value="stoic"
+                            checked
+                        >
+
+                        <span>
+                            <strong>Stoic</strong>
+                            Focused and direct
+                        </span>
+                    </label>
+
+                    <label class="mode-choice">
+                        <input
+                            type="radio"
+                            name="motivation-mode"
+                            value="gentle"
+                        >
+
+                        <span>
+                            <strong>Gentle</strong>
+                            Calm and encouraging
+                        </span>
+                    </label>
+
+                    <label class="mode-choice">
+                        <input
+                            type="radio"
+                            name="motivation-mode"
+                            value="driven"
+                        >
+
+                        <span>
+                            <strong>Driven</strong>
+                            Energetic and ambitious
+                        </span>
+                    </label>
+                </fieldset>
+
+                <button type="submit" class="button button-primary">
+                    Continue
+                </button>
+
+                <p class="small-note">
+                    Your name and preference stay in this browser.
+                </p>
+            </form>
+        </div>
+    </section>
+
+    <main id="planner-app" class="app hidden">
+        <aside class="sidebar">
+            <div>
+                <p class="brand">Syllabalance</p>
+
+                <h1>
+                    Hi, <span id="display-name">Student</span>.
+                </h1>
+
+                <p class="sidebar-question">
+                    What needs your attention today?
+                </p>
+            </div>
+
+            <nav class="sidebar-navigation">
+                {% if ranked_courses %}
+                    <a href="#allocation">Study allocation</a>
+                    <a href="#grade-calculator">Grade calculator</a>
+
+                    {% if study_schedule %}
+                        <a href="#schedule">Weekly schedule</a>
+                    {% endif %}
+                {% else %}
+                    <a href="#courses">Courses</a>
+                    <a href="#availability">Available time</a>
+                {% endif %}
+            </nav>
+
+            <div class="sidebar-actions">
+                <button
+                    id="theme-toggle"
+                    type="button"
+                    class="sidebar-button"
+                >
+                    Light mode
+                </button>
+
+                <button
+                    id="change-profile"
+                    type="button"
+                    class="sidebar-button"
+                >
+                    Change profile
+                </button>
+            </div>
+        </aside>
+
+        <div class="main-content">
+            <section class="daily-note">
+                <div class="daily-note-label">
+                    <span id="today-date">
+                        Today
+                    </span>
+
+                    <span id="quote-mode">
+                        Stoic mode
+                    </span>
+                </div>
+
+                <p id="quote-text">
+                    Focus on what can be completed today.
+                </p>
+            </section>
+
+            {% if error_message %}
+                <div class="error-message" role="alert">
+                    <strong>We could not create the plan.</strong>
+                    <p>{{ error_message }}</p>
+                </div>
+            {% endif %}
+
+            {% if not ranked_courses %}
+                <form
+                    method="POST"
+                    action="/"
+                    id="study-plan-form"
+                >
+                    <section id="courses" class="content-section">
+                        <header class="section-header">
+                            <span class="section-number">01</span>
+
+                            <div>
+                                <h2>Your courses</h2>
+
+                                <p>
+                                    Add the courses competing for your
+                                    study time.
+                                </p>
+                            </div>
+                        </header>
+
+                        <div id="course-list">
+                            <fieldset class="course-entry">
+                                <legend>Course 1</legend>
+
+                                <div class="course-fields">
+                                    <div class="field field-full">
+                                        <label>Course name</label>
+
+                                        <input
+                                            name="course_name"
+                                            type="text"
+                                            placeholder="Example: Calculus II"
+                                            required
+                                        >
+                                    </div>
+
+                                    <div class="field">
+                                        <label>
+                                            Current overall grade
+
+                                            <span class="label-unit">
+                                                out of 100
+                                            </span>
+                                        </label>
+
+                                        <input
+                                            name="current_grade"
+                                            type="number"
+                                            min="0"
+                                            max="100"
+                                            step="0.1"
+                                            placeholder="72"
+                                            required
+                                        >
+
+                                        <small>
+                                            Your course average from
+                                            work already graded. Do not
+                                            include the upcoming
+                                            assessment.
+                                        </small>
+                                    </div>
+
+                                    <div class="field">
+                                        <label>
+                                            Target overall grade
+
+                                            <span class="label-unit">
+                                                out of 100
+                                            </span>
+                                        </label>
+
+                                        <input
+                                            name="target_grade"
+                                            type="number"
+                                            min="0"
+                                            max="100"
+                                            step="0.1"
+                                            placeholder="80"
+                                            required
+                                        >
+
+                                        <small>
+                                            The overall course grade
+                                            you want after the upcoming
+                                            assessment.
+                                        </small>
+                                    </div>
+
+                                    <div class="field">
+                                        <label>
+                                            Assessment weight
+
+                                            <span class="label-unit">
+                                                % of course
+                                            </span>
+                                        </label>
+
+                                        <input
+                                            name="assessment_weight"
+                                            type="number"
+                                            min="0.1"
+                                            max="100"
+                                            step="0.1"
+                                            placeholder="30"
+                                            required
+                                        >
+
+                                        <small>
+                                            Enter 30 if the assessment
+                                            is worth 30% of the course.
+                                        </small>
+                                    </div>
+
+                                    <div class="field">
+                                        <label>Days remaining</label>
+
+                                        <input
+                                            name="days_remaining"
+                                            type="number"
+                                            min="1"
+                                            step="1"
+                                            placeholder="7"
+                                            required
+                                        >
+                                    </div>
+
+                                    <div class="field">
+                                        <label>
+                                            Confidence
+
+                                            <span class="label-unit">
+                                                1–5
+                                            </span>
+                                        </label>
+
+                                        <input
+                                            name="confidence"
+                                            type="number"
+                                            min="1"
+                                            max="5"
+                                            step="1"
+                                            placeholder="3"
+                                            required
+                                        >
+
+                                        <small>
+                                            1 is very unsure. 5 is very
+                                            confident.
+                                        </small>
+                                    </div>
+
+                                    <div class="field">
+                                        <label>Course credit hours</label>
+
+                                        <input
+                                            name="credit_hours"
+                                            type="number"
+                                            min="0.5"
+                                            max="10"
+                                            step="0.5"
+                                            placeholder="3"
+                                            required
+                                        >
+                                    </div>
+                                </div>
+
+                                <button
+                                    type="button"
+                                    class="remove-course"
+                                    hidden
+                                >
+                                    Remove course
+                                </button>
+                            </fieldset>
+                        </div>
+
+                        <button
+                            id="add-course"
+                            type="button"
+                            class="button button-secondary"
+                        >
+                            Add another course
+                        </button>
+                    </section>
+
+                    <section
+                        id="availability"
+                        class="content-section availability-section"
+                    >
+                        <header class="section-header">
+                            <span class="section-number">02</span>
+
+                            <div>
+                                <h2>Your available time</h2>
+
+                                <p>
+                                    Enter the time you can realistically
+                                    study during the next seven days.
+                                </p>
+                            </div>
+                        </header>
+
+                        <div class="availability-fields">
+                            <div class="field">
+                                <label for="total-hours">
+                                    Total study hours available
+                                </label>
+
+                                <div class="input-unit">
+                                    <input
+                                        id="total-hours"
+                                        name="total_hours"
+                                        type="number"
+                                        min="0.5"
+                                        max="168"
+                                        step="0.5"
+                                        placeholder="12"
+                                        required
+                                    >
+
+                                    <span>hours</span>
+                                </div>
+                            </div>
+
+                            <div class="field">
+                                <label for="max-daily-hours">
+                                    Maximum hours per day
+                                </label>
+
+                                <div class="input-unit">
+                                    <input
+                                        id="max-daily-hours"
+                                        name="max_daily_hours"
+                                        type="number"
+                                        min="0.5"
+                                        max="16"
+                                        step="0.5"
+                                        value="4"
+                                        required
+                                    >
+
+                                    <span>hours</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button
+                            type="submit"
+                            class="button button-primary"
+                        >
+                            Build my study plan
+                        </button>
+
+                        <p class="small-note">
+                            Course information is used for this
+                            calculation only and is not stored.
+                        </p>
+                    </section>
+                </form>
+            {% else %}
+                <section
+                    id="allocation"
+                    class="content-section"
+                >
+                    <header class="section-header">
+                        <span class="section-number">01</span>
+
+                        <div>
+                            <h2>Study allocation</h2>
+
+                            <p>
+                                How your {{ total_hours }} available
+                                hours could be distributed.
+                            </p>
+                        </div>
+                    </header>
+
+                    <div class="result-list">
+                        {% for course in ranked_courses %}
+                            <article
+                                class="result-row"
+                                data-simulation-course
+                                data-name="{{ course.name }}"
+                                data-current-grade="{{ course.current_grade }}"
+                                data-target-grade="{{ course.target_grade }}"
+                                data-assessment-weight="{{ course.assessment_weight }}"
+                            >
+                                <span class="result-rank">
+                                    {{ "%02d"|format(loop.index) }}
+                                </span>
+
+                                <div class="result-information">
+                                    <h3>{{ course.name }}</h3>
+
+                                    <p class="priority-score">
+                                        Priority score:
+                                        {{ course.priority_score }} / 100
+                                    </p>
+
+                                    <p class="result-status">
+                                        {% if course.feasibility_status == "secured" %}
+                                            Target already secured
+                                        {% elif course.feasibility_status == "within_reach" %}
+                                            Target within reach
+                                        {% elif course.feasibility_status == "challenging" %}
+                                            Challenging target
+                                        {% elif course.feasibility_status == "high_risk" %}
+                                            High-risk target
+                                        {% else %}
+                                            Target not reachable through
+                                            this assessment alone
+                                        {% endif %}
+                                    </p>
+
+                                    {% if course.required_grade is defined %}
+                                        <p class="result-detail">
+                                            Required assessment score:
+
+                                            <strong>
+                                                {{ course.required_grade }}
+                                                / 100
+                                            </strong>
+                                        </p>
+                                    {% endif %}
+
+                                    {% if course.feasibility_status == "not_possible" %}
+                                        {% if course.maximum_achievable_grade is defined %}
+                                            <p class="result-detail">
+                                                Highest possible
+                                                overall grade:
+
+                                                <strong>
+                                                    {{ course.maximum_achievable_grade }}
+                                                    / 100
+                                                </strong>
+                                            </p>
+                                        {% endif %}
+                                    {% endif %}
+
+                                    {% if course.feasibility_message is defined %}
+                                        <p class="result-message">
+                                            {{ course.feasibility_message }}
+                                        </p>
+                                    {% endif %}
+
+                                    {% if course.priority_explanation is defined %}
+                                        <details class="explanation">
+                                            <summary>
+                                                Why this course ranked here
+                                            </summary>
+
+                                            <p>
+                                                {{ course.priority_explanation }}
+                                            </p>
+                                        </details>
+                                    {% endif %}
+                                </div>
+
+                                <div class="allocated-hours">
+                                    <strong>
+                                        {{ course.recommended_hours }}
+                                    </strong>
+
+                                    <span>hours</span>
+                                </div>
+                            </article>
+                        {% endfor %}
+                    </div>
+
+                    <details class="method-details">
+                        <summary>
+                            How the allocation was calculated
+                        </summary>
+
+                        <p>
+                            Courses are compared using grade gap,
+                            assessment weight, days remaining,
+                            confidence level, and course credit hours.
+                            Your available time is then distributed
+                            across those priorities.
+                        </p>
+                    </details>
+                </section>
+
+                <section
+                    id="grade-calculator"
+                    class="content-section calculator-section"
+                >
+                    <header class="section-header">
+                        <span class="section-number">02</span>
+
+                        <div>
+                            <h2>Try an assessment score</h2>
+
+                            <p>
+                                Check how one assessment could change
+                                your overall course grade.
+                            </p>
+                        </div>
+                    </header>
+
+                    <div class="calculator-layout">
+                        <div class="calculator-controls">
+                            <div class="field">
+                                <label for="simulation-course">
+                                    Course
+                                </label>
+
+                                <select id="simulation-course"></select>
+                            </div>
+
+                            <div class="course-snapshot">
+                                <div>
+                                    <span>Current grade</span>
+
+                                    <strong id="context-current-grade">
+                                        —
+                                    </strong>
+                                </div>
+
+                                <div>
+                                    <span>Assessment weight</span>
+
+                                    <strong id="context-assessment-weight">
+                                        —
+                                    </strong>
+                                </div>
+
+                                <div>
+                                    <span>Target grade</span>
+
+                                    <strong id="context-target-grade">
+                                        —
+                                    </strong>
+                                </div>
+                            </div>
+
+                            <div class="score-control">
+                                <label for="simulation-score">
+                                    Assessment score
+                                </label>
+
+                                <div class="score-value">
+                                    <output
+                                        id="simulation-score-output"
+                                        for="simulation-score"
+                                    >
+                                        75
+                                    </output>
+
+                                    <span>/ 100</span>
+                                </div>
+
+                                <input
+                                    id="simulation-score"
+                                    type="range"
+                                    min="0"
+                                    max="100"
+                                    value="75"
+                                    step="1"
+                                >
+                            </div>
+                        </div>
+
+                        <div class="calculator-result">
+                            <p class="result-label">
+                                Projected overall grade
+                            </p>
+
+                            <div class="projected-result">
+                                <strong id="projected-grade">
+                                    —
+                                </strong>
+
+                                <span>/ 100</span>
+                            </div>
+
+                            <p id="outcome-sentence">
+                                Choose a course and possible score.
+                            </p>
+
+                            <div class="target-summary">
+                                <p id="target-status">—</p>
+                                <p id="target-guidance">—</p>
+                            </div>
+
+                            <details class="calculation-details">
+                                <summary>See the calculation</summary>
+
+                                <div class="calculation-body">
+                                    <div>
+                                        <span>Current coursework</span>
+
+                                        <strong id="current-calculation">
+                                            —
+                                        </strong>
+                                    </div>
+
+                                    <div>
+                                        <span>Assessment</span>
+
+                                        <strong id="assessment-calculation">
+                                            —
+                                        </strong>
+                                    </div>
+
+                                    <div class="calculation-total">
+                                        <span>Overall grade</span>
+
+                                        <strong id="total-calculation">
+                                            —
+                                        </strong>
+                                    </div>
+                                </div>
+                            </details>
+                        </div>
+                    </div>
+                </section>
+
+                {% if study_schedule %}
+                    <section
+                        id="schedule"
+                        class="content-section"
+                    >
+                        <header class="section-header">
+                            <span class="section-number">03</span>
+
+                            <div>
+                                <h2>Seven-day schedule</h2>
+
+                                <p>
+                                    Sessions arranged around your
+                                    deadlines with a daily limit of
+                                    {{ max_daily_hours }} hours.
+                                </p>
+                            </div>
+                        </header>
+
+                        <div class="schedule-days">
+                            {% for day in study_schedule.days %}
+                                <article class="schedule-day">
+                                    <header>
+                                        <h3>{{ day.date_label }}</h3>
+
+                                        <span>
+                                            {{ day.total_hours }}
+                                            hours
+                                        </span>
+                                    </header>
+
+                                    {% if day.sessions %}
+                                        <ul>
+                                            {% for session in day.sessions %}
+                                                <li>
+                                                    <span>
+                                                        {{ session.course_name }}
+                                                    </span>
+
+                                                    <strong>
+                                                        {{ session.hours }}
+                                                        hours
+                                                    </strong>
+                                                </li>
+                                            {% endfor %}
+                                        </ul>
+                                    {% else %}
+                                        <p class="rest-day">
+                                            No study session scheduled.
+                                        </p>
+                                    {% endif %}
+                                </article>
+                            {% endfor %}
+                        </div>
+
+                        {% if study_schedule.unscheduled %}
+                            <div class="schedule-warning">
+                                <strong>
+                                    Some hours could not fit before
+                                    their deadlines.
+                                </strong>
+
+                                {% for item in study_schedule.unscheduled %}
+                                    <p>
+                                        {{ item.course_name }}:
+                                        {{ item.hours }} hours —
+                                        {{ item.reason }}
+                                    </p>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </section>
+                {% endif %}
+
+                <a
+                    href="{{ url_for('home') }}"
+                    class="button button-secondary new-plan-link"
+                >
+                    Create another study plan
+                </a>
+            {% endif %}
+        </div>
+    </main>
+
+    <script>
+        const quotes = {
+            stoic: [
+                "Focus on what can be completed today.",
+                "Put your attention on the next useful action.",
+                "Consistency makes difficult work familiar."
+            ],
+
+            gentle: [
+                "A slower day can still move you forward.",
+                "Rest and progress can belong in the same plan.",
+                "Choose a pace you can return to tomorrow."
+            ],
+
+            driven: [
+                "Today’s work gives tomorrow more options.",
+                "Put your strongest effort where it matters most.",
+                "A clear plan protects your attention."
+            ]
+        };
+
+        const profilePage =
+            document.getElementById("profile-page");
+
+        const plannerApp =
+            document.getElementById("planner-app");
+
+        const profileForm =
+            document.getElementById("profile-form");
+
+        const displayName =
+            document.getElementById("display-name");
+
+        const quoteText =
+            document.getElementById("quote-text");
+
+        const quoteMode =
+            document.getElementById("quote-mode");
+
+        const todayDate =
+            document.getElementById("today-date");
+
+        const themeToggle =
+            document.getElementById("theme-toggle");
+
+        const changeProfile =
+            document.getElementById("change-profile");
+
+        if (todayDate) {
+            const currentDate = new Date();
+
+            todayDate.textContent =
+                new Intl.DateTimeFormat(
+                    "en-US",
+                    {
+                        weekday: "long",
+                        month: "long",
+                        day: "numeric",
+                        year: "numeric"
+                    }
+                ).format(currentDate);
+        }
+
+        function showPlanner(name, mode) {
+            displayName.textContent = name;
+
+            const selectedQuotes =
+                quotes[mode] || quotes.stoic;
+
+            const quoteIndex =
+                new Date().getDate() % selectedQuotes.length;
+
+            quoteText.textContent =
+                selectedQuotes[quoteIndex];
+
+            quoteMode.textContent =
+                `${mode.charAt(0).toUpperCase()}${mode.slice(1)} mode`;
+
+            profilePage.classList.add("hidden");
+            plannerApp.classList.remove("hidden");
+        }
+
+        function showProfile() {
+            plannerApp.classList.add("hidden");
+            profilePage.classList.remove("hidden");
+        }
+
+        const savedName =
+            localStorage.getItem("syllabalance-name");
+
+        const savedMode =
+            localStorage.getItem("syllabalance-mode") || "stoic";
+
+        if (savedName) {
+            showPlanner(savedName, savedMode);
+        } else {
+            showProfile();
+        }
+
+        profileForm.addEventListener(
+            "submit",
+            function (event) {
+                event.preventDefault();
+
+                const name =
+                    document
+                        .getElementById("profile-name")
+                        .value
+                        .trim();
+
+                const mode =
+                    document.querySelector(
+                        'input[name="motivation-mode"]:checked'
+                    ).value;
+
+                if (!name) {
+                    return;
+                }
+
+                localStorage.setItem(
+                    "syllabalance-name",
+                    name
+                );
+
+                localStorage.setItem(
+                    "syllabalance-mode",
+                    mode
+                );
+
+                showPlanner(name, mode);
+            }
+        );
+
+        changeProfile.addEventListener(
+            "click",
+            function () {
+                document.getElementById(
+                    "profile-name"
+                ).value =
+                    localStorage.getItem(
+                        "syllabalance-name"
+                    ) || "";
+
+                const mode =
+                    localStorage.getItem(
+                        "syllabalance-mode"
+                    ) || "stoic";
+
+                const modeInput =
+                    document.querySelector(
+                        `input[name="motivation-mode"][value="${mode}"]`
+                    );
+
+                if (modeInput) {
+                    modeInput.checked = true;
+                }
+
+                showProfile();
+            }
+        );
+
+        function updateThemeButton() {
+            const theme =
+                document.documentElement.getAttribute(
+                    "data-theme"
+                );
+
+            themeToggle.textContent =
+                theme === "dark"
+                    ? "Light mode"
+                    : "Dark mode";
+        }
+
+        themeToggle.addEventListener(
+            "click",
+            function () {
+                const currentTheme =
+                    document.documentElement.getAttribute(
+                        "data-theme"
+                    );
+
+                const newTheme =
+                    currentTheme === "dark"
+                        ? "light"
+                        : "dark";
+
+                document.documentElement.setAttribute(
+                    "data-theme",
+                    newTheme
+                );
+
+                localStorage.setItem(
+                    "syllabalance-theme",
+                    newTheme
+                );
+
+                updateThemeButton();
+            }
+        );
+
+        updateThemeButton();
+
+        const courseList =
+            document.getElementById("course-list");
+
+        const addCourseButton =
+            document.getElementById("add-course");
+
+        function updateCourseNumbers() {
+            if (!courseList) {
+                return;
+            }
+
+            const courses =
+                courseList.querySelectorAll(
+                    ".course-entry"
+                );
+
+            courses.forEach(function (course, index) {
+                course.querySelector(
+                    "legend"
+                ).textContent =
+                    `Course ${index + 1}`;
+
+                const removeButton =
+                    course.querySelector(
+                        ".remove-course"
+                    );
+
+                removeButton.hidden =
+                    courses.length === 1;
+            });
+        }
+
+        if (courseList && addCourseButton) {
+            addCourseButton.addEventListener(
+                "click",
+                function () {
+                    const firstCourse =
+                        courseList.querySelector(
+                            ".course-entry"
+                        );
+
+                    const newCourse =
+                        firstCourse.cloneNode(true);
+
+                    newCourse
+                        .querySelectorAll("input")
+                        .forEach(function (input) {
+                            input.value = "";
+                        });
+
+                    newCourse.querySelector(
+                        ".remove-course"
+                    ).hidden = false;
+
+                    courseList.appendChild(newCourse);
+                    updateCourseNumbers();
+                }
+            );
+
+            courseList.addEventListener(
+                "click",
+                function (event) {
+                    if (
+                        !event.target.classList.contains(
+                            "remove-course"
+                        )
+                    ) {
+                        return;
+                    }
+
+                    event.target
+                        .closest(".course-entry")
+                        .remove();
+
+                    updateCourseNumbers();
+                }
+            );
+
+            updateCourseNumbers();
+        }
+
+        const calculator =
+            document.getElementById(
+                "grade-calculator"
+            );
+
+        if (calculator) {
+            const courseElements =
+                document.querySelectorAll(
+                    "[data-simulation-course]"
+                );
+
+            const courses =
+                Array.from(courseElements).map(
+                    function (element) {
+                        return {
+                            name: element.dataset.name,
+
+                            current:
+                                Number(
+                                    element.dataset.currentGrade
+                                ),
+
+                            target:
+                                Number(
+                                    element.dataset.targetGrade
+                                ),
+
+                            weight:
+                                Number(
+                                    element.dataset.assessmentWeight
+                                )
+                        };
+                    }
+                );
+
+            const courseSelect =
+                document.getElementById(
+                    "simulation-course"
+                );
+
+            const scoreSlider =
+                document.getElementById(
+                    "simulation-score"
+                );
+
+            courses.forEach(function (course, index) {
+                const option =
+                    document.createElement("option");
+
+                option.value = index;
+                option.textContent = course.name;
+
+                courseSelect.appendChild(option);
+            });
+
+            function rounded(value) {
+                return Number(value).toFixed(1);
+            }
+
+            function updateCalculator() {
+                const course =
+                    courses[Number(courseSelect.value)];
+
+                if (!course) {
+                    return;
+                }
+
+                const score =
+                    Number(scoreSlider.value);
+
+                const weightDecimal =
+                    course.weight / 100;
+
+                const completedDecimal =
+                    1 - weightDecimal;
+
+                const currentPart =
+                    course.current * completedDecimal;
+
+                const assessmentPart =
+                    score * weightDecimal;
+
+                const projected =
+                    currentPart + assessmentPart;
+
+                const change =
+                    projected - course.current;
+
+                const maximum =
+                    currentPart + 100 * weightDecimal;
+
+                const required =
+                    weightDecimal > 0
+                        ? (
+                            course.target -
+                            currentPart
+                        ) / weightDecimal
+                        : Infinity;
+
+                document.getElementById(
+                    "simulation-score-output"
+                ).textContent = rounded(score);
+
+                document.getElementById(
+                    "context-current-grade"
+                ).textContent =
+                    `${rounded(course.current)} / 100`;
+
+                document.getElementById(
+                    "context-assessment-weight"
+                ).textContent =
+                    `${rounded(course.weight)}%`;
+
+                document.getElementById(
+                    "context-target-grade"
+                ).textContent =
+                    `${rounded(course.target)} / 100`;
+
+                document.getElementById(
+                    "projected-grade"
+                ).textContent =
+                    rounded(projected);
+
+                const outcomeSentence =
+                    document.getElementById(
+                        "outcome-sentence"
+                    );
+
+                if (Math.abs(change) < 0.05) {
+                    outcomeSentence.textContent =
+                        `Your overall grade would remain at ` +
+                        `${rounded(projected)}.`;
+                } else if (change > 0) {
+                    outcomeSentence.textContent =
+                        `Your grade would move from ` +
+                        `${rounded(course.current)} to ` +
+                        `${rounded(projected)} — an increase of ` +
+                        `${rounded(change)} percentage points.`;
+                } else {
+                    outcomeSentence.textContent =
+                        `Your grade would move from ` +
+                        `${rounded(course.current)} to ` +
+                        `${rounded(projected)} — a decrease of ` +
+                        `${rounded(Math.abs(change))} percentage points.`;
+                }
+
+                const targetStatus =
+                    document.getElementById(
+                        "target-status"
+                    );
+
+                const targetGuidance =
+                    document.getElementById(
+                        "target-guidance"
+                    );
+
+                if (projected >= course.target) {
+                    targetStatus.textContent =
+                        "This score reaches your target.";
+
+                    targetStatus.dataset.state =
+                        "success";
+
+                    targetGuidance.textContent =
+                        `Your target is ` +
+                        `${rounded(course.target)} / 100.`;
+                } else if (required > 100) {
+                    targetStatus.textContent =
+                        "The target cannot be reached through this assessment alone.";
+
+                    targetStatus.dataset.state =
+                        "warning";
+
+                    targetGuidance.textContent =
+                        `A perfect score would make your overall ` +
+                        `grade ${rounded(maximum)} / 100. Reaching ` +
+                        `${rounded(course.target)} would require ` +
+                        `${rounded(required)} / 100, which is not possible.`;
+                } else if (required <= 0) {
+                    targetStatus.textContent =
+                        "Your target is already secured.";
+
+                    targetStatus.dataset.state =
+                        "success";
+
+                    targetGuidance.textContent =
+                        `Your graded coursework already places you ` +
+                        `at or above the target.`;
+                } else {
+                    targetStatus.textContent =
+                        `You need at least ${rounded(required)} / 100 ` +
+                        `to reach your target.`;
+
+                    targetStatus.dataset.state =
+                        "neutral";
+
+                    targetGuidance.textContent =
+                        score >= required
+                            ? "Your selected score is enough."
+                            : `Your selected score is ` +
+                              `${rounded(required - score)} points short.`;
+                }
+
+                document.getElementById(
+                    "current-calculation"
+                ).textContent =
+                    `${rounded(course.current)} × ` +
+                    `${rounded(100 - course.weight)}% = ` +
+                    `${rounded(currentPart)}`;
+
+                document.getElementById(
+                    "assessment-calculation"
+                ).textContent =
+                    `${rounded(score)} × ` +
+                    `${rounded(course.weight)}% = ` +
+                    `${rounded(assessmentPart)}`;
+
+                document.getElementById(
+                    "total-calculation"
+                ).textContent =
+                    `${rounded(currentPart)} + ` +
+                    `${rounded(assessmentPart)} = ` +
+                    `${rounded(projected)} / 100`;
+            }
+
+            courseSelect.addEventListener(
+                "change",
+                updateCalculator
+            );
+
+            scoreSlider.addEventListener(
+                "input",
+                updateCalculator
+            );
+
+            updateCalculator();
+        }
+    </script>
+</body>
+</html>
