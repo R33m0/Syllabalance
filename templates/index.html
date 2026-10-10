@@ -31,12 +31,11 @@
         <div class="profile-content">
             <p class="brand">Syllabalance</p>
 
-            <h1>Build a study plan around the time you have.</h1>
+            <h1>Plan your study time across upcoming exams.</h1>
 
             <p class="profile-introduction">
-                Add your courses, deadlines, and available hours.
-                Syllabalance will rank your priorities and divide
-                your study time.
+                Add your next exam for each course. Syllabalance ranks
+                them, splits your study hours, and builds your week.
             </p>
 
             <form id="profile-form" class="profile-form">
@@ -56,46 +55,71 @@
                 </div>
 
                 <fieldset class="mode-selector">
-                    <legend>Choose a motivation style</legend>
+                    <legend>Choose your study style</legend>
 
                     <label class="mode-choice">
                         <input
                             type="radio"
-                            name="motivation-mode"
-                            value="stoic"
+                            name="study-style"
+                            value="steady"
                             checked
                         >
 
                         <span>
-                            <strong>Stoic</strong>
-                            Focused and direct
+                            <strong>Steady</strong>
+                            Short, even sessions across the available days.
                         </span>
                     </label>
 
                     <label class="mode-choice">
                         <input
                             type="radio"
-                            name="motivation-mode"
-                            value="gentle"
+                            name="study-style"
+                            value="front-loader"
                         >
 
                         <span>
-                            <strong>Gentle</strong>
-                            Calm and encouraging
+                            <strong>Front-loader</strong>
+                            More work early, with lighter review near the exam.
                         </span>
                     </label>
 
                     <label class="mode-choice">
                         <input
                             type="radio"
-                            name="motivation-mode"
-                            value="driven"
+                            name="study-style"
+                            value="deadline-driven"
                         >
 
                         <span>
-                            <strong>Driven</strong>
-                            Energetic and ambitious
+                            <strong>Deadline-driven</strong>
+                            Daily progress that increases as the exam gets closer.
                         </span>
+                    </label>
+                </fieldset>
+
+                <fieldset class="profile-tone-selector">
+                    <legend>Explanation detail</legend>
+
+                    <label>
+                        <input
+                            type="radio"
+                            name="explanation-tone"
+                            value="short"
+                            checked
+                        >
+
+                        <span>Keep it short</span>
+                    </label>
+
+                    <label>
+                        <input
+                            type="radio"
+                            name="explanation-tone"
+                            value="detailed"
+                        >
+
+                        <span>Explain more</span>
                     </label>
                 </fieldset>
 
@@ -104,13 +128,17 @@
                 </button>
 
                 <p class="small-note">
-                    Your name and preference stay in this browser.
+                    Your name and preferences stay in this browser.
                 </p>
             </form>
         </div>
     </section>
 
-    <main id="planner-app" class="app hidden">
+    <main
+        id="planner-app"
+        class="app hidden"
+        data-generated-study-style="{{ study_style }}"
+    >
         <aside class="sidebar">
             <div>
                 <p class="brand">Syllabalance</p>
@@ -138,6 +166,64 @@
                 {% endif %}
             </nav>
 
+            <section class="sidebar-summary" aria-live="polite">
+                <h2>Current plan</h2>
+
+                {% if ranked_courses %}
+                    <p class="sidebar-summary-line">
+                        <strong>{{ ranked_courses|length }}</strong>
+                        exam{% if ranked_courses|length != 1 %}s{% endif %}
+                        <span aria-hidden="true">·</span>
+                        <strong>{{ "%.1f"|format(total_hours) }}</strong>h
+                        this week
+                    </p>
+
+                    <p class="sidebar-summary-priority">
+                        <span>Top priority</span>
+                        <strong>{{ ranked_courses[0].name }}</strong>
+                        <small>{{ ranked_courses[0].assessment_name }}</small>
+                    </p>
+                {% else %}
+                    <p class="sidebar-summary-line">
+                        <strong id="summary-exam-count">1</strong>
+                        <span id="summary-exam-label">exam</span>
+                        <span aria-hidden="true">·</span>
+                        <strong id="summary-hours">0</strong>h this week
+                    </p>
+
+                    <p class="sidebar-summary-priority">
+                        <span>Top priority</span>
+                        <strong>Shown after planning</strong>
+                    </p>
+                {% endif %}
+            </section>
+
+            <div class="sidebar-tone-control">
+                <span>Explanation detail</span>
+
+                <div
+                    class="tone-toggle"
+                    role="group"
+                    aria-label="Explanation detail"
+                >
+                    <button
+                        type="button"
+                        data-tone-option="short"
+                        aria-pressed="true"
+                    >
+                        Keep it short
+                    </button>
+
+                    <button
+                        type="button"
+                        data-tone-option="detailed"
+                        aria-pressed="false"
+                    >
+                        Explain more
+                    </button>
+                </div>
+            </div>
+
             <div class="sidebar-actions">
                 <button
                     id="theme-toggle"
@@ -158,20 +244,45 @@
         </aside>
 
         <div class="main-content">
-            <section class="daily-note">
-                <div class="daily-note-label">
+            <section class="plan-brief">
+                <div class="plan-brief-meta">
                     <span id="today-date">
                         Today
                     </span>
 
-                    <span id="quote-mode">
-                        Stoic mode
+                    <span id="study-style-label">
+                        Steady study style
                     </span>
+
+                    <small id="study-style-description">
+                        Even sessions across the available days.
+                    </small>
                 </div>
 
-                <p id="quote-text">
-                    Focus on what can be completed today.
-                </p>
+                <div class="plan-brief-content">
+                    <p class="plan-tagline">
+                        Know what to study first.
+                    </p>
+
+                    {% if nudges %}
+                        <div class="nudge-list" aria-live="polite">
+                            {% for nudge in nudges %}
+                                <p
+                                    class="plan-nudge"
+                                    data-tone-text
+                                    data-short="{{ nudge.short }}"
+                                    data-detailed="{{ nudge.detailed }}"
+                                >
+                                    {{ nudge.short }}
+                                </p>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <p class="plan-empty-state">
+                            Build a plan to see what needs attention.
+                        </p>
+                    {% endif %}
+                </div>
             </section>
 
             {% if error_message %}
@@ -187,16 +298,23 @@
                     action="/"
                     id="study-plan-form"
                 >
+                    <input
+                        id="study-style-input"
+                        name="study_style"
+                        type="hidden"
+                        value="steady"
+                    >
+
                     <section id="courses" class="content-section">
                         <header class="section-header">
                             <span class="section-number">01</span>
 
                             <div>
-                                <h2>Your courses</h2>
+                                <h2>Upcoming exams</h2>
 
                                 <p>
-                                    Add the courses competing for your
-                                    study time.
+                                    Add the next exam you are preparing
+                                    for in each course.
                                 </p>
                             </div>
                         </header>
@@ -206,7 +324,7 @@
                                 <legend>Course 1</legend>
 
                                 <div class="course-fields">
-                                    <div class="field field-full">
+                                    <div class="field">
                                         <label>Course name</label>
 
                                         <input
@@ -215,11 +333,32 @@
                                             placeholder="Example: Calculus II"
                                             required
                                         >
+
+                                        <small>
+                                            Enter the course connected
+                                            to this exam.
+                                        </small>
+                                    </div>
+
+                                    <div class="field">
+                                        <label>Exam name</label>
+
+                                        <input
+                                            name="assessment_name"
+                                            type="text"
+                                            placeholder="Example: Final Exam"
+                                            required
+                                        >
+
+                                        <small>
+                                            Enter the specific exam you
+                                            are preparing for.
+                                        </small>
                                     </div>
 
                                     <div class="field">
                                         <label>
-                                            Current overall grade
+                                            Current overall course grade
 
                                             <span class="label-unit">
                                                 out of 100
@@ -237,16 +376,14 @@
                                         >
 
                                         <small>
-                                            Your course average from
-                                            work already graded. Do not
-                                            include the upcoming
-                                            assessment.
+                                            Your current average from
+                                            coursework already graded.
                                         </small>
                                     </div>
 
                                     <div class="field">
                                         <label>
-                                            Target overall grade
+                                            Desired final course grade
 
                                             <span class="label-unit">
                                                 out of 100
@@ -264,15 +401,14 @@
                                         >
 
                                         <small>
-                                            The overall course grade
-                                            you want after the upcoming
-                                            assessment.
+                                            The overall course grade you
+                                            are working toward.
                                         </small>
                                     </div>
 
                                     <div class="field">
                                         <label>
-                                            Assessment weight
+                                            Exam weight in final course grade
 
                                             <span class="label-unit">
                                                 % of course
@@ -290,13 +426,14 @@
                                         >
 
                                         <small>
-                                            Enter 30 if the assessment
-                                            is worth 30% of the course.
+                                            Enter 30 if this exam is
+                                            worth 30% of the final
+                                            course grade.
                                         </small>
                                     </div>
 
                                     <div class="field">
-                                        <label>Days remaining</label>
+                                        <label>Days until exam</label>
 
                                         <input
                                             name="days_remaining"
@@ -310,7 +447,7 @@
 
                                     <div class="field">
                                         <label>
-                                            Confidence
+                                            Exam confidence
 
                                             <span class="label-unit">
                                                 1–5
@@ -353,9 +490,22 @@
                                     class="remove-course"
                                     hidden
                                 >
-                                    Remove course
+                                    Remove exam
                                 </button>
                             </fieldset>
+                        </div>
+
+                        <div class="projection-note">
+                            <strong>About grade estimates</strong>
+
+                            <p>
+                                Grade projections are exact when this
+                                is the final remaining graded
+                                exam. Otherwise, they are
+                                estimates that assume your current
+                                average continues through the rest of
+                                the course.
+                            </p>
                         </div>
 
                         <button
@@ -363,7 +513,7 @@
                             type="button"
                             class="button button-secondary"
                         >
-                            Add another course
+                            Add another exam
                         </button>
                     </section>
 
@@ -375,7 +525,7 @@
                             <span class="section-number">02</span>
 
                             <div>
-                                <h2>Your available time</h2>
+                                <h2>Your available study time</h2>
 
                                 <p>
                                     Enter the time you can realistically
@@ -454,7 +604,7 @@
 
                             <p>
                                 How your {{ total_hours }} available
-                                hours could be distributed.
+                                hours could be divided across exams.
                             </p>
                         </div>
                     </header>
@@ -465,6 +615,7 @@
                                 class="result-row"
                                 data-simulation-course
                                 data-name="{{ course.name }}"
+                                data-assessment-name="{{ course.assessment_name }}"
                                 data-current-grade="{{ course.current_grade }}"
                                 data-target-grade="{{ course.target_grade }}"
                                 data-assessment-weight="{{ course.assessment_weight }}"
@@ -475,6 +626,11 @@
 
                                 <div class="result-information">
                                     <h3>{{ course.name }}</h3>
+
+                                    <p class="assessment-name">
+                                        Preparing for:
+                                        {{ course.assessment_name }}
+                                    </p>
 
                                     <p class="priority-score">
                                         Priority score:
@@ -492,13 +648,14 @@
                                             High-risk target
                                         {% else %}
                                             Target not reachable through
-                                            this assessment alone
+                                            this exam alone
                                         {% endif %}
                                     </p>
 
                                     {% if course.required_grade is defined %}
                                         <p class="result-detail">
-                                            Required assessment score:
+                                            Required score on
+                                            {{ course.assessment_name }}:
 
                                             <strong>
                                                 {{ course.required_grade }}
@@ -533,7 +690,11 @@
                                                 Why this course ranked here
                                             </summary>
 
-                                            <p>
+                                            <p
+                                                data-tone-text
+                                                data-short="{{ course.name }} combines deadline urgency and grade impact."
+                                                data-detailed="{{ course.priority_explanation }}"
+                                            >
                                                 {{ course.priority_explanation }}
                                             </p>
                                         </details>
@@ -542,7 +703,11 @@
 
                                 <div class="allocated-hours">
                                     <strong>
-                                        {{ course.recommended_hours }}
+                                        {{
+                                            "%.1f"|format(
+                                                course.recommended_hours
+                                            )
+                                        }}
                                     </strong>
 
                                     <span>hours</span>
@@ -556,9 +721,13 @@
                             How the allocation was calculated
                         </summary>
 
-                        <p>
+                        <p
+                            data-tone-text
+                            data-short="Higher urgency and grade impact receive more time."
+                            data-detailed="Courses are compared using grade gap, exam weight, days remaining, confidence level, and course credit hours. Your available time is then distributed across those priorities."
+                        >
                             Courses are compared using grade gap,
-                            assessment weight, days remaining,
+                            exam weight, days remaining,
                             confidence level, and course credit hours.
                             Your available time is then distributed
                             across those priorities.
@@ -574,11 +743,12 @@
                         <span class="section-number">02</span>
 
                         <div>
-                            <h2>Try an assessment score</h2>
+                            <h2>Test an exam score</h2>
 
                             <p>
-                                Check how one assessment could change
-                                your overall course grade.
+                                Choose one upcoming exam and see
+                                how a possible result could affect your
+                                overall course grade.
                             </p>
                         </div>
                     </header>
@@ -603,7 +773,7 @@
                                 </div>
 
                                 <div>
-                                    <span>Assessment weight</span>
+                                    <span>Exam weight</span>
 
                                     <strong id="context-assessment-weight">
                                         —
@@ -621,7 +791,7 @@
 
                             <div class="score-control">
                                 <label for="simulation-score">
-                                    Assessment score
+                                    Possible exam score
                                 </label>
 
                                 <div class="score-value">
@@ -663,6 +833,18 @@
                                 Choose a course and possible score.
                             </p>
 
+                            <p
+                                class="calculator-assumption"
+                                data-tone-text
+                                data-short="This is exact only if this is the final graded exam."
+                                data-detailed="This projection is exact when the selected exam is the final remaining graded component. Otherwise, treat it as an estimate."
+                            >
+                                This projection is exact when the
+                                selected exam is the final
+                                remaining graded component. Otherwise,
+                                treat it as an estimate.
+                            </p>
+
                             <div class="target-summary">
                                 <p id="target-status">—</p>
                                 <p id="target-guidance">—</p>
@@ -681,7 +863,7 @@
                                     </div>
 
                                     <div>
-                                        <span>Assessment</span>
+                                        <span>Exam</span>
 
                                         <strong id="assessment-calculation">
                                             —
@@ -738,6 +920,12 @@
                                                 <li>
                                                     <span>
                                                         {{ session.course_name }}
+
+                                                        {% if session.assessment_name %}
+                                                            <small>
+                                                                {{ session.assessment_name }}
+                                                            </small>
+                                                        {% endif %}
                                                     </span>
 
                                                     <strong>
@@ -786,24 +974,24 @@
     </main>
 
     <script>
-        const quotes = {
-            stoic: [
-                "Focus on what can be completed today.",
-                "Put your attention on the next useful action.",
-                "Consistency makes difficult work familiar."
-            ],
+        const studyStyleDetails = {
+            steady: {
+                label: "Steady study style",
+                description:
+                    "Even sessions across the available days."
+            },
 
-            gentle: [
-                "A slower day can still move you forward.",
-                "Rest and progress can belong in the same plan.",
-                "Choose a pace you can return to tomorrow."
-            ],
+            "front-loader": {
+                label: "Front-loader study style",
+                description:
+                    "More work early, then lighter review."
+            },
 
-            driven: [
-                "Today’s work gives tomorrow more options.",
-                "Put your strongest effort where it matters most.",
-                "A clear plan protects your attention."
-            ]
+            "deadline-driven": {
+                label: "Deadline-driven study style",
+                description:
+                    "Daily work that increases near the exam."
+            }
         };
 
         const profilePage =
@@ -818,11 +1006,17 @@
         const displayName =
             document.getElementById("display-name");
 
-        const quoteText =
-            document.getElementById("quote-text");
+        const studyStyleLabel =
+            document.getElementById("study-style-label");
 
-        const quoteMode =
-            document.getElementById("quote-mode");
+        const studyStyleDescription =
+            document.getElementById("study-style-description");
+
+        const studyStyleInput =
+            document.getElementById("study-style-input");
+
+        const toneButtons =
+            document.querySelectorAll("[data-tone-option]");
 
         const todayDate =
             document.getElementById("today-date");
@@ -840,28 +1034,79 @@
                 new Intl.DateTimeFormat(
                     "en-US",
                     {
-                        weekday: "long",
-                        month: "long",
-                        day: "numeric",
-                        year: "numeric"
+                        weekday: "short",
+                        month: "short",
+                        day: "numeric"
                     }
                 ).format(currentDate);
         }
 
-        function showPlanner(name, mode) {
+        function applyTone(tone) {
+            const selectedTone =
+                tone === "detailed" ? "detailed" : "short";
+
+            document.documentElement.dataset.explanationTone =
+                selectedTone;
+
+            document.querySelectorAll(
+                "[data-tone-text]"
+            ).forEach(function (element) {
+                element.textContent =
+                    selectedTone === "detailed"
+                        ? element.dataset.detailed
+                        : element.dataset.short;
+            });
+
+            toneButtons.forEach(function (button) {
+                button.setAttribute(
+                    "aria-pressed",
+                    button.dataset.toneOption === selectedTone
+                        ? "true"
+                        : "false"
+                );
+            });
+
+            const profileToneInput =
+                document.querySelector(
+                    `input[name="explanation-tone"]` +
+                    `[value="${selectedTone}"]`
+                );
+
+            if (profileToneInput) {
+                profileToneInput.checked = true;
+            }
+
+            localStorage.setItem(
+                "syllabalance-explanation-tone",
+                selectedTone
+            );
+        }
+
+        function showPlanner(name, studyStyle, tone) {
             displayName.textContent = name;
 
-            const selectedQuotes =
-                quotes[mode] || quotes.stoic;
+            const selectedStyle =
+                studyStyleDetails[studyStyle]
+                    ? studyStyle
+                    : "steady";
 
-            const quoteIndex =
-                new Date().getDate() % selectedQuotes.length;
+            const styleDetails =
+                studyStyleDetails[selectedStyle];
 
-            quoteText.textContent =
-                selectedQuotes[quoteIndex];
+            studyStyleLabel.textContent =
+                styleDetails.label;
 
-            quoteMode.textContent =
-                `${mode.charAt(0).toUpperCase()}${mode.slice(1)} mode`;
+            studyStyleLabel.title =
+                styleDetails.description;
+
+            studyStyleDescription.textContent =
+                styleDetails.description;
+
+            if (studyStyleInput) {
+                studyStyleInput.value = selectedStyle;
+            }
+
+            applyTone(tone);
 
             profilePage.classList.add("hidden");
             plannerApp.classList.remove("hidden");
@@ -875,12 +1120,24 @@
         const savedName =
             localStorage.getItem("syllabalance-name");
 
-        const savedMode =
-            localStorage.getItem("syllabalance-mode") || "stoic";
+        const savedStudyStyle =
+            localStorage.getItem(
+                "syllabalance-study-style"
+            ) || "steady";
+
+        const savedTone =
+            localStorage.getItem(
+                "syllabalance-explanation-tone"
+            ) || "short";
 
         if (savedName) {
-            showPlanner(savedName, savedMode);
+            showPlanner(
+                savedName,
+                savedStudyStyle,
+                savedTone
+            );
         } else {
+            applyTone(savedTone);
             showProfile();
         }
 
@@ -895,9 +1152,14 @@
                         .value
                         .trim();
 
-                const mode =
+                const studyStyle =
                     document.querySelector(
-                        'input[name="motivation-mode"]:checked'
+                        'input[name="study-style"]:checked'
+                    ).value;
+
+                const tone =
+                    document.querySelector(
+                        'input[name="explanation-tone"]:checked'
                     ).value;
 
                 if (!name) {
@@ -910,11 +1172,16 @@
                 );
 
                 localStorage.setItem(
-                    "syllabalance-mode",
-                    mode
+                    "syllabalance-study-style",
+                    studyStyle
                 );
 
-                showPlanner(name, mode);
+                localStorage.setItem(
+                    "syllabalance-explanation-tone",
+                    tone
+                );
+
+                showPlanner(name, studyStyle, tone);
             }
         );
 
@@ -928,23 +1195,39 @@
                         "syllabalance-name"
                     ) || "";
 
-                const mode =
+                const studyStyle =
                     localStorage.getItem(
-                        "syllabalance-mode"
-                    ) || "stoic";
+                        "syllabalance-study-style"
+                    ) || "steady";
 
-                const modeInput =
+                const studyStyleOption =
                     document.querySelector(
-                        `input[name="motivation-mode"][value="${mode}"]`
+                        `input[name="study-style"]` +
+                        `[value="${studyStyle}"]`
                     );
 
-                if (modeInput) {
-                    modeInput.checked = true;
+                if (studyStyleOption) {
+                    studyStyleOption.checked = true;
                 }
+
+                applyTone(
+                    localStorage.getItem(
+                        "syllabalance-explanation-tone"
+                    ) || "short"
+                );
 
                 showProfile();
             }
         );
+
+        toneButtons.forEach(function (button) {
+            button.addEventListener(
+                "click",
+                function () {
+                    applyTone(button.dataset.toneOption);
+                }
+            );
+        });
 
         function updateThemeButton() {
             const theme =
@@ -993,6 +1276,45 @@
         const addCourseButton =
             document.getElementById("add-course");
 
+        const summaryExamCount =
+            document.getElementById("summary-exam-count");
+
+        const summaryExamLabel =
+            document.getElementById("summary-exam-label");
+
+        const summaryHours =
+            document.getElementById("summary-hours");
+
+        const totalHoursInput =
+            document.getElementById("total-hours");
+
+        function updateSidebarSummary() {
+            if (!courseList || !summaryExamCount) {
+                return;
+            }
+
+            const examCount =
+                courseList.querySelectorAll(
+                    ".course-entry"
+                ).length;
+
+            summaryExamCount.textContent = examCount;
+            summaryExamLabel.textContent =
+                examCount === 1 ? "exam" : "exams";
+
+            if (summaryHours && totalHoursInput) {
+                const hours = Number(totalHoursInput.value);
+
+                summaryHours.textContent =
+                    Number.isFinite(hours) && hours > 0
+                        ? hours.toLocaleString(
+                            "en-US",
+                            { maximumFractionDigits: 1 }
+                        )
+                        : "0";
+            }
+        }
+
         function updateCourseNumbers() {
             if (!courseList) {
                 return;
@@ -1017,6 +1339,8 @@
                 removeButton.hidden =
                     courses.length === 1;
             });
+
+            updateSidebarSummary();
         }
 
         if (courseList && addCourseButton) {
@@ -1068,6 +1392,15 @@
             updateCourseNumbers();
         }
 
+        if (totalHoursInput) {
+            totalHoursInput.addEventListener(
+                "input",
+                updateSidebarSummary
+            );
+
+            updateSidebarSummary();
+        }
+
         const calculator =
             document.getElementById(
                 "grade-calculator"
@@ -1084,6 +1417,9 @@
                     function (element) {
                         return {
                             name: element.dataset.name,
+
+                            assessment:
+                                element.dataset.assessmentName,
 
                             current:
                                 Number(
@@ -1118,7 +1454,8 @@
                     document.createElement("option");
 
                 option.value = index;
-                option.textContent = course.name;
+                option.textContent =
+                    `${course.name}: ${course.assessment}`;
 
                 courseSelect.appendChild(option);
             });
@@ -1236,7 +1573,7 @@
                         `${rounded(course.target)} / 100.`;
                 } else if (required > 100) {
                     targetStatus.textContent =
-                        "The target cannot be reached through this assessment alone.";
+                        "The target cannot be reached through this exam alone.";
 
                     targetStatus.dataset.state =
                         "warning";

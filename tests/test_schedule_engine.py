@@ -132,3 +132,95 @@ def test_invalid_daily_limit_is_rejected():
 
     except ValueError:
         assert True
+
+
+def _single_exam_schedule(study_style):
+    courses = [
+        {
+            "name": "Physics",
+            "assessment_name": "Final exam",
+            "priority_score": 70,
+            "days_remaining": 7,
+            "recommended_hours": 7.0
+        }
+    ]
+
+    return build_study_schedule(
+        allocated_courses=courses,
+        max_daily_hours=4,
+        start_date=date(2026, 9, 20),
+        schedule_days=7,
+        study_style=study_style
+    )
+
+
+def _daily_exam_hours(schedule):
+    return [
+        day["sessions"][0]["hours"]
+        for day in schedule["days"]
+    ]
+
+
+def test_steady_style_spreads_hours_evenly():
+    result = _single_exam_schedule("steady")
+    hours = _daily_exam_hours(result)
+
+    assert hours == [1.0] * 7
+
+
+def test_front_loader_places_more_work_early():
+    result = _single_exam_schedule("front-loader")
+    hours = _daily_exam_hours(result)
+
+    assert hours[0] > hours[-1]
+    assert sum(hours[:2]) > sum(hours[-2:])
+
+
+def test_deadline_driven_increases_hours_near_exam():
+    result = _single_exam_schedule("deadline-driven")
+    hours = _daily_exam_hours(result)
+
+    assert len(hours) == 7
+    assert all(hours_for_day > 0 for hours_for_day in hours)
+    assert hours[-1] > hours[0]
+
+
+def test_no_session_occurs_on_or_after_exam_day():
+    courses = [
+        {
+            "name": "Physics",
+            "assessment_name": "Midterm",
+            "priority_score": 70,
+            "days_remaining": 3,
+            "recommended_hours": 6.0
+        }
+    ]
+
+    result = build_study_schedule(
+        allocated_courses=courses,
+        max_daily_hours=3,
+        start_date=date(2026, 9, 20),
+        schedule_days=7,
+        study_style="deadline-driven"
+    )
+
+    assert all(
+        day["day_index"] < 3
+        for day in result["days"]
+    )
+
+
+def test_invalid_study_style_is_rejected():
+    try:
+        build_study_schedule(
+            allocated_courses=[],
+            max_daily_hours=2,
+            start_date=date(2026, 9, 20),
+            schedule_days=7,
+            study_style="random"
+        )
+
+        assert False
+
+    except ValueError:
+        assert True

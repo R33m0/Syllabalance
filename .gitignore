@@ -1,9 +1,28 @@
+# Virtual environment
 .venv/
+venv/
+
+# Python cache
 __pycache__/
 *.py[cod]
+*$py.class
+
+# Testing cache
 .pytest_cache/
-.vscode/
+.coverage
+htmlcov/
+
+# Environment variables
 .env
-*.log
+.env.*
+
+# Editors
+.vscode/
+.idea/
+
+# Operating system files
+.DS_Store
 Thumbs.db
-static/style-old.css
+
+# Logs
+*.log

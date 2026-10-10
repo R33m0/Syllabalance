@@ -5,19 +5,25 @@ from scipy.optimize import minimize
 def calculate_required_grade(
     current_grade,
     target_grade,
-    assessment_weight
+    assessment_weight,
+    grade_mode="percent"
 ):
     """
-    Calculate the assessment grade required to reach
+    Calculate the exam grade required to reach
     a target course grade.
 
-    The current grade is treated as the average across
-    coursework completed before the assessment.
+    Two grading modes are supported:
+
+    - "points": current_grade is the number of points already
+      earned out of (100 - assessment_weight). For example, 60
+      points out of 70 before a final worth 30.
+    - "percent": current_grade is the average percentage across
+      coursework completed before the exam.
     """
 
-    if not 0 <= current_grade <= 100:
+    if not 0 < assessment_weight <= 100:
         raise ValueError(
-            "Current grade must be between 0 and 100."
+            "Exam weight must be greater than 0."
         )
 
     if not 0 <= target_grade <= 100:
@@ -25,17 +31,29 @@ def calculate_required_grade(
             "Target grade must be between 0 and 100."
         )
 
-    if not 0 < assessment_weight <= 100:
-        raise ValueError(
-            "Assessment weight must be greater than 0."
-        )
-
     assessment_ratio = assessment_weight / 100
     completed_ratio = 1 - assessment_ratio
 
-    completed_contribution = (
-        current_grade * completed_ratio
-    )
+    if grade_mode == "points":
+        available_points = round(100 - assessment_weight, 1)
+
+        if not 0 <= current_grade <= available_points:
+            raise ValueError(
+                f"Points earned can't be more than "
+                f"{available_points:g} when the exam is worth "
+                f"{assessment_weight:g}%."
+            )
+
+        completed_contribution = current_grade
+    else:
+        if not 0 <= current_grade <= 100:
+            raise ValueError(
+                "Current grade must be between 0 and 100."
+            )
+
+        completed_contribution = (
+            current_grade * completed_ratio
+        )
 
     required_grade = (
         target_grade - completed_contribution
@@ -72,7 +90,7 @@ def calculate_required_grade(
             "status": "secured",
             "message": (
                 "The target is already secured even with "
-                "a score of 0% on this assessment."
+                "a score of 0% on this exam."
             )
         }
 
@@ -87,7 +105,7 @@ def calculate_required_grade(
             "message": (
                 f"Reaching this target would require "
                 f"{required_grade}%. Even with 100% on "
-                f"the assessment, the highest achievable "
+                f"the exam, the highest achievable "
                 f"course grade is "
                 f"{maximum_achievable_grade}%."
             )
@@ -118,7 +136,7 @@ def calculate_required_grade(
             "message": (
                 f"A score of {required_grade}% is needed. "
                 "The target is achievable but requires "
-                "a strong assessment result."
+                "a strong exam result."
             )
         }
 
@@ -183,9 +201,19 @@ def create_priority_explanation(course):
 
     reasons = []
 
-    grade_gap = (
-        course["target_grade"]
-        - course["current_grade"]
+    assessment_name = course.get(
+        "assessment_name",
+        "The exam"
+    )
+
+    current_average = course.get(
+        "current_average",
+        course["current_grade"]
+    )
+
+    grade_gap = round(
+        course["target_grade"] - current_average,
+        1
     )
 
     if grade_gap >= 15:
@@ -207,18 +235,18 @@ def create_priority_explanation(course):
 
     if course["days_remaining"] <= 3:
         reasons.append(
-            f"the assessment is due in only "
+            f"{assessment_name} is due in only "
             f"{course['days_remaining']} days"
         )
 
     elif course["days_remaining"] <= 7:
         reasons.append(
-            "the assessment is due within one week"
+            f"{assessment_name} is due within one week"
         )
 
     if course["assessment_weight"] >= 30:
         reasons.append(
-            f"the assessment contributes "
+            f"{assessment_name} contributes "
             f"{course['assessment_weight']:g}% "
             "of the course grade"
         )
@@ -250,8 +278,15 @@ def rank_courses(courses):
     ranked_courses = []
 
     for course in courses:
+        grade_mode = course.get("grade_mode", "percent")
+
+        current_average = course.get(
+            "current_average",
+            course["current_grade"]
+        )
+
         score = calculate_priority(
-            current_grade=course["current_grade"],
+            current_grade=current_average,
             target_grade=course["target_grade"],
             assessment_weight=course[
                 "assessment_weight"
@@ -266,7 +301,8 @@ def rank_courses(courses):
             target_grade=course["target_grade"],
             assessment_weight=course[
                 "assessment_weight"
-            ]
+            ],
+            grade_mode=grade_mode
         )
 
         course_result = course.copy()
@@ -387,7 +423,13 @@ def allocate_study_hours(
 
     rounded_hours[
         highest_priority_index
-    ] += rounding_difference
+    ] = round(
+        float(
+            rounded_hours[highest_priority_index]
+            + rounding_difference
+        ),
+        1
+    )
 
     allocations = []
 
@@ -397,8 +439,9 @@ def allocate_study_hours(
     ):
         course_result = course.copy()
 
-        course_result["recommended_hours"] = float(
-            hours
+        course_result["recommended_hours"] = round(
+            float(hours),
+            1
         )
 
         allocations.append(course_result)
