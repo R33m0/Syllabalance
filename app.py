@@ -14,6 +14,12 @@ from nudge_engine import build_plan_nudges
 app = Flask(__name__)
 
 
+def _short_date(value):
+    """Format a date without a leading zero on the day."""
+
+    return value.strftime("%a, %b %d").replace(" 0", " ")
+
+
 @app.route("/", methods=["GET", "POST"])
 def home():
     ranked_courses = []
@@ -23,8 +29,9 @@ def home():
     total_hours = None
     max_daily_hours = None
     study_style = "steady"
-    grade_mode = "points"
+    grading_mode = "points"
     error_message = None
+    planning_date = date.today()
 
     if request.method == "POST":
         try:
@@ -73,13 +80,28 @@ def home():
                 "steady"
             )
 
-            grade_mode = request.form.get(
-                "grade_mode",
+            grading_mode = request.form.get(
+                "grading_mode",
                 "points"
             )
 
-            if grade_mode not in ("points", "percent"):
-                grade_mode = "points"
+            submitted_today = request.form.get(
+                "today_date",
+                ""
+            )
+
+            if submitted_today:
+                planning_date = date.fromisoformat(
+                    submitted_today
+                )
+
+            if grading_mode not in {
+                "points",
+                "percentage"
+            }:
+                raise ValueError(
+                    "Choose a valid grading mode."
+                )
 
             if total_hours <= 0:
                 raise ValueError(
@@ -97,11 +119,8 @@ def home():
                 raise ValueError(
                     f"With a {max_daily_hours:g}-hour daily limit, "
                     f"you can study at most {weekly_capacity:g} "
-                    "hours this week. Lower your total hours or "
-                    "raise the daily limit."
+                    "hours this week."
                 )
-
-            today = date.today()
 
             courses = []
 
@@ -121,7 +140,7 @@ def home():
                     current,
                     target,
                     weight,
-                    exam_date_text,
+                    exam_date_value,
                     confidence,
                     credits
                 ) = values
@@ -136,48 +155,62 @@ def home():
                         "Every course needs an upcoming exam."
                     )
 
-                try:
-                    exam_date = date.fromisoformat(exam_date_text)
-                except ValueError:
-                    raise ValueError(
-                        f"Choose an exam date for {name.strip()}."
-                    )
+                exam_date = date.fromisoformat(
+                    exam_date_value
+                )
 
-                days = (exam_date - today).days
-
-                if days < 1:
+                if exam_date < planning_date:
                     raise ValueError(
-                        f"{name.strip()}'s exam date must be "
-                        "after today."
+                        "Exam dates cannot be in the past."
                     )
 
                 current_value = float(current)
+                target_value = float(target)
                 weight_value = float(weight)
 
-                if grade_mode == "points":
-                    available_points = 100 - weight_value
-
-                    current_average = (
-                        current_value / available_points * 100
-                        if available_points > 0
-                        else 0.0
+                if not 0 < weight_value <= 100:
+                    raise ValueError(
+                        "Exam weight must be between 0 and 100."
                     )
-                else:
-                    current_average = current_value
+
+                if not 0 <= current_value <= 100:
+                    raise ValueError(
+                        "Current grade must be between 0 and 100."
+                    )
+
+                if not 0 <= target_value <= 100:
+                    raise ValueError(
+                        "Desired grade must be between 0 and 100."
+                    )
+
+                completed_points_available = (
+                    100 - weight_value
+                )
+
+                if (
+                    grading_mode == "points"
+                    and current_value
+                    > completed_points_available
+                ):
+                    raise ValueError(
+                        f"For {name.strip()}, points earned so far "
+                        f"cannot exceed "
+                        f"{completed_points_available:g} because "
+                        f"the exam is worth {weight_value:g}%."
+                    )
+
+                days = (exam_date - planning_date).days
 
                 course = {
                     "name": name.strip(),
                     "assessment_name": assessment_name.strip(),
                     "current_grade": current_value,
-                    "current_average": round(current_average, 1),
-                    "grade_mode": grade_mode,
-                    "target_grade": float(target),
+                    "target_grade": target_value,
                     "assessment_weight": weight_value,
-                    "exam_date": exam_date.isoformat(),
-                    "exam_date_label": (
-                        f"{exam_date:%a}, {exam_date:%b} "
-                        f"{exam_date.day}"
-                    ),
+                    "grading_mode": grading_mode,
+                    "exam_date": exam_date,
+                    "exam_date_iso": exam_date.isoformat(),
+                    "exam_date_label": _short_date(exam_date),
                     "days_remaining": days,
                     "confidence": int(confidence),
                     "credit_hours": float(credits)
@@ -200,6 +233,7 @@ def home():
             study_schedule = build_study_schedule(
                 allocated_courses=ranked_courses,
                 max_daily_hours=max_daily_hours,
+                start_date=planning_date,
                 schedule_days=7,
                 study_style=study_style
             )
@@ -225,7 +259,8 @@ def home():
         total_hours=total_hours,
         max_daily_hours=max_daily_hours,
         study_style=study_style,
-        grade_mode=grade_mode,
+        grading_mode=grading_mode,
+        today_iso=planning_date.isoformat(),
         error_message=error_message
     )
 

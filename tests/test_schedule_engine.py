@@ -210,6 +210,35 @@ def test_no_session_occurs_on_or_after_exam_day():
     )
 
 
+def test_exam_date_is_the_schedule_deadline_source():
+    exam_date = date(2026, 9, 22)
+
+    courses = [
+        {
+            "name": "Physics",
+            "assessment_name": "Final exam",
+            "priority_score": 70,
+            "days_remaining": 7,
+            "exam_date": exam_date,
+            "recommended_hours": 6.0
+        }
+    ]
+
+    result = build_study_schedule(
+        allocated_courses=courses,
+        max_daily_hours=3,
+        start_date=date(2026, 9, 20),
+        schedule_days=7,
+        study_style="steady"
+    )
+
+    assert result["scheduled_total"] == 6.0
+    assert all(
+        day["date"] < exam_date
+        for day in result["days"]
+    )
+
+
 def test_invalid_study_style_is_rejected():
     try:
         build_study_schedule(

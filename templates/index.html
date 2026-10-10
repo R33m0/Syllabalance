@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
 
@@ -17,12 +17,18 @@
 
     <script>
         const storedTheme =
-            localStorage.getItem("syllabalance-theme") || "dark";
+            localStorage.getItem("syllabalance-theme") || "light";
 
-        document.documentElement.setAttribute(
-            "data-theme",
-            storedTheme
-        );
+        if (storedTheme === "dark") {
+            document.documentElement.setAttribute(
+                "data-theme",
+                "dark"
+            );
+        } else {
+            document.documentElement.removeAttribute(
+                "data-theme"
+            );
+        }
     </script>
 </head>
 
@@ -34,7 +40,7 @@
             <h1>Plan your study time across upcoming exams.</h1>
 
             <p class="profile-introduction">
-                Add your next exam for each course. Syllabalance ranks
+                Add the exams you are preparing for. Syllabalance ranks
                 them, splits your study hours, and builds your week.
             </p>
 
@@ -161,7 +167,7 @@
                         <a href="#schedule">Weekly schedule</a>
                     {% endif %}
                 {% else %}
-                    <a href="#courses">Courses</a>
+                    <a href="#courses">Upcoming exams</a>
                     <a href="#availability">Available time</a>
                 {% endif %}
             </nav>
@@ -184,17 +190,7 @@
                         <small>{{ ranked_courses[0].assessment_name }}</small>
                     </p>
                 {% else %}
-                    <p class="sidebar-summary-line">
-                        <strong id="summary-exam-count">1</strong>
-                        <span id="summary-exam-label">exam</span>
-                        <span aria-hidden="true">·</span>
-                        <strong id="summary-hours">0</strong>h this week
-                    </p>
-
-                    <p class="sidebar-summary-priority">
-                        <span>Top priority</span>
-                        <strong>Shown after planning</strong>
-                    </p>
+                    <p class="sidebar-empty-state">No plan yet</p>
                 {% endif %}
             </section>
 
@@ -211,7 +207,7 @@
                         data-tone-option="short"
                         aria-pressed="true"
                     >
-                        Keep it short
+                        Short
                     </button>
 
                     <button
@@ -219,7 +215,7 @@
                         data-tone-option="detailed"
                         aria-pressed="false"
                     >
-                        Explain more
+                        Detailed
                     </button>
                 </div>
             </div>
@@ -251,7 +247,7 @@
                     </span>
 
                     <span id="study-style-label">
-                        Steady study style
+                        Steady
                     </span>
 
                     <small id="study-style-description">
@@ -305,6 +301,13 @@
                         value="steady"
                     >
 
+                    <input
+                        id="today-date-input"
+                        name="today_date"
+                        type="hidden"
+                        value="{{ today_iso }}"
+                    >
+
                     <section id="courses" class="content-section">
                         <header class="section-header">
                             <span class="section-number">01</span>
@@ -313,11 +316,37 @@
                                 <h2>Upcoming exams</h2>
 
                                 <p>
-                                    Add the next exam you are preparing
-                                    for in each course.
+                                    Add each upcoming exam you are
+                                    preparing for.
                                 </p>
                             </div>
                         </header>
+
+                        <fieldset class="grading-mode-selector">
+                            <legend>My current grade is:</legend>
+
+                            <label>
+                                <input
+                                    type="radio"
+                                    name="grading_mode"
+                                    value="points"
+                                    {% if grading_mode == "points" %}checked{% endif %}
+                                >
+
+                                <span>Points earned so far</span>
+                            </label>
+
+                            <label>
+                                <input
+                                    type="radio"
+                                    name="grading_mode"
+                                    value="percentage"
+                                    {% if grading_mode == "percentage" %}checked{% endif %}
+                                >
+
+                                <span>Average percentage</span>
+                            </label>
+                        </fieldset>
 
                         <div id="course-list">
                             <fieldset class="course-entry">
@@ -357,11 +386,14 @@
                                     </div>
 
                                     <div class="field">
-                                        <label>
-                                            Current overall course grade
+                                        <label data-current-grade-label>
+                                            <span data-current-grade-title>
+                                                Points earned so far
+                                            </span>
 
                                             <span class="label-unit">
-                                                out of 100
+                                                (out of
+                                                <span data-current-grade-max>—</span>)
                                             </span>
                                         </label>
 
@@ -371,13 +403,13 @@
                                             min="0"
                                             max="100"
                                             step="0.1"
-                                            placeholder="72"
+                                            placeholder="e.g. 60"
                                             required
                                         >
 
-                                        <small>
-                                            Your current average from
-                                            coursework already graded.
+                                        <small data-current-grade-help>
+                                            Enter the cumulative points
+                                            already earned before this exam.
                                         </small>
                                     </div>
 
@@ -396,7 +428,7 @@
                                             min="0"
                                             max="100"
                                             step="0.1"
-                                            placeholder="80"
+                                            placeholder="e.g. 90"
                                             required
                                         >
 
@@ -421,7 +453,7 @@
                                             min="0.1"
                                             max="100"
                                             step="0.1"
-                                            placeholder="30"
+                                            placeholder="e.g. 30"
                                             required
                                         >
 
@@ -433,16 +465,18 @@
                                     </div>
 
                                     <div class="field">
-                                        <label>Days until exam</label>
+                                        <label>Exam date</label>
 
                                         <input
-                                            name="days_remaining"
-                                            type="number"
-                                            min="1"
-                                            step="1"
-                                            placeholder="7"
+                                            name="exam_date"
+                                            type="date"
                                             required
                                         >
+
+                                        <small>
+                                            No study session will be placed
+                                            on or after the exam day.
+                                        </small>
                                     </div>
 
                                     <div class="field">
@@ -460,7 +494,7 @@
                                             min="1"
                                             max="5"
                                             step="1"
-                                            placeholder="3"
+                                            placeholder="e.g. 3"
                                             required
                                         >
 
@@ -479,7 +513,7 @@
                                             min="0.5"
                                             max="10"
                                             step="0.5"
-                                            placeholder="3"
+                                            placeholder="e.g. 3"
                                             required
                                         >
                                     </div>
@@ -499,12 +533,12 @@
                             <strong>About grade estimates</strong>
 
                             <p>
-                                Grade projections are exact when this
-                                is the final remaining graded
-                                exam. Otherwise, they are
-                                estimates that assume your current
-                                average continues through the rest of
-                                the course.
+                                Points mode treats the current value as
+                                cumulative course points already earned.
+                                Percentage mode treats it as the average
+                                across completed coursework. Percentage
+                                projections are exact when this is the
+                                final remaining graded exam.
                             </p>
                         </div>
 
@@ -548,7 +582,7 @@
                                         min="0.5"
                                         max="168"
                                         step="0.5"
-                                        placeholder="12"
+                                        placeholder="e.g. 12"
                                         required
                                     >
 
@@ -577,6 +611,13 @@
                                 </div>
                             </div>
                         </div>
+
+                        <p
+                            id="study-time-error"
+                            class="inline-error"
+                            role="alert"
+                            hidden
+                        ></p>
 
                         <button
                             type="submit"
@@ -619,13 +660,26 @@
                                 data-current-grade="{{ course.current_grade }}"
                                 data-target-grade="{{ course.target_grade }}"
                                 data-assessment-weight="{{ course.assessment_weight }}"
+                                data-grading-mode="{{ course.grading_mode }}"
                             >
                                 <span class="result-rank">
                                     {{ "%02d"|format(loop.index) }}
                                 </span>
 
                                 <div class="result-information">
-                                    <h3>{{ course.name }}</h3>
+                                    <h3>
+                                        {{ course.name }}
+
+                                        <span
+                                            class="exam-date-context deadline-badge
+                                                {% if course.days_remaining <= 3 %}deadline-urgent
+                                                {% elif course.days_remaining <= 7 %}deadline-soon
+                                                {% else %}deadline-on-track{% endif %}"
+                                        >
+                                            · {{ course.exam_date_label }}
+                                            · {{ course.days_remaining }} day{% if course.days_remaining != 1 %}s{% endif %} left
+                                        </span>
+                                    </h3>
 
                                     <p class="assessment-name">
                                         Preparing for:
@@ -765,7 +819,9 @@
 
                             <div class="course-snapshot">
                                 <div>
-                                    <span>Current grade</span>
+                                    <span id="context-current-label">
+                                        Current grade
+                                    </span>
 
                                     <strong id="context-current-grade">
                                         —
@@ -855,7 +911,9 @@
 
                                 <div class="calculation-body">
                                     <div>
-                                        <span>Current coursework</span>
+                                        <span id="current-calculation-label">
+                                            Current coursework
+                                        </span>
 
                                         <strong id="current-calculation">
                                             —
@@ -976,19 +1034,19 @@
     <script>
         const studyStyleDetails = {
             steady: {
-                label: "Steady study style",
+                label: "Steady",
                 description:
                     "Even sessions across the available days."
             },
 
             "front-loader": {
-                label: "Front-loader study style",
+                label: "Front-loader",
                 description:
                     "More work early, then lighter review."
             },
 
             "deadline-driven": {
-                label: "Deadline-driven study style",
+                label: "Deadline-driven",
                 description:
                     "Daily work that increases near the exam."
             }
@@ -1021,14 +1079,24 @@
         const todayDate =
             document.getElementById("today-date");
 
+        const todayDateInput =
+            document.getElementById("today-date-input");
+
         const themeToggle =
             document.getElementById("theme-toggle");
 
         const changeProfile =
             document.getElementById("change-profile");
 
+        const browserToday = new Date();
+
+        const browserTodayValue = [
+            browserToday.getFullYear(),
+            String(browserToday.getMonth() + 1).padStart(2, "0"),
+            String(browserToday.getDate()).padStart(2, "0")
+        ].join("-");
+
         if (todayDate) {
-            const currentDate = new Date();
 
             todayDate.textContent =
                 new Intl.DateTimeFormat(
@@ -1038,7 +1106,11 @@
                         month: "short",
                         day: "numeric"
                     }
-                ).format(currentDate);
+                ).format(browserToday);
+        }
+
+        if (todayDateInput) {
+            todayDateInput.value = browserTodayValue;
         }
 
         function applyTone(tone) {
@@ -1230,13 +1302,12 @@
         });
 
         function updateThemeButton() {
-            const theme =
-                document.documentElement.getAttribute(
-                    "data-theme"
-                );
+            const isDark =
+                document.documentElement.dataset.theme
+                === "dark";
 
             themeToggle.textContent =
-                theme === "dark"
+                isDark
                     ? "Light mode"
                     : "Dark mode";
         }
@@ -1244,20 +1315,22 @@
         themeToggle.addEventListener(
             "click",
             function () {
-                const currentTheme =
-                    document.documentElement.getAttribute(
+                const isDark =
+                    document.documentElement.dataset.theme
+                    === "dark";
+
+                const newTheme = isDark ? "light" : "dark";
+
+                if (newTheme === "dark") {
+                    document.documentElement.setAttribute(
+                        "data-theme",
+                        "dark"
+                    );
+                } else {
+                    document.documentElement.removeAttribute(
                         "data-theme"
                     );
-
-                const newTheme =
-                    currentTheme === "dark"
-                        ? "light"
-                        : "dark";
-
-                document.documentElement.setAttribute(
-                    "data-theme",
-                    newTheme
-                );
+                }
 
                 localStorage.setItem(
                     "syllabalance-theme",
@@ -1276,43 +1349,187 @@
         const addCourseButton =
             document.getElementById("add-course");
 
-        const summaryExamCount =
-            document.getElementById("summary-exam-count");
-
-        const summaryExamLabel =
-            document.getElementById("summary-exam-label");
-
-        const summaryHours =
-            document.getElementById("summary-hours");
-
         const totalHoursInput =
             document.getElementById("total-hours");
 
-        function updateSidebarSummary() {
-            if (!courseList || !summaryExamCount) {
+        const maxDailyHoursInput =
+            document.getElementById("max-daily-hours");
+
+        const studyTimeError =
+            document.getElementById("study-time-error");
+
+        const studyPlanForm =
+            document.getElementById("study-plan-form");
+
+        const gradingModeOptions =
+            document.querySelectorAll(
+                'input[name="grading_mode"]'
+            );
+
+        function displayNumber(value) {
+            return Number(value).toLocaleString(
+                "en-US",
+                { maximumFractionDigits: 1 }
+            );
+        }
+
+        function selectedGradingMode() {
+            const selected = document.querySelector(
+                'input[name="grading_mode"]:checked'
+            );
+
+            return selected
+                ? selected.value
+                : "points";
+        }
+
+        function updateCourseGradeFields(gradingMode) {
+            if (!courseList) {
                 return;
             }
 
-            const examCount =
-                courseList.querySelectorAll(
-                    ".course-entry"
-                ).length;
+            courseList.querySelectorAll(
+                ".course-entry"
+            ).forEach(function (course) {
+                const currentInput = course.querySelector(
+                    'input[name="current_grade"]'
+                );
 
-            summaryExamCount.textContent = examCount;
-            summaryExamLabel.textContent =
-                examCount === 1 ? "exam" : "exams";
+                const weightInput = course.querySelector(
+                    'input[name="assessment_weight"]'
+                );
 
-            if (summaryHours && totalHoursInput) {
-                const hours = Number(totalHoursInput.value);
+                const title = course.querySelector(
+                    "[data-current-grade-title]"
+                );
 
-                summaryHours.textContent =
-                    Number.isFinite(hours) && hours > 0
-                        ? hours.toLocaleString(
-                            "en-US",
-                            { maximumFractionDigits: 1 }
-                        )
-                        : "0";
+                const unit = course.querySelector(
+                    ".label-unit"
+                );
+
+                const maximum = course.querySelector(
+                    "[data-current-grade-max]"
+                );
+
+                const helper = course.querySelector(
+                    "[data-current-grade-help]"
+                );
+
+                const weight = Number(weightInput.value);
+                const hasValidWeight =
+                    Number.isFinite(weight)
+                    && weight > 0
+                    && weight <= 100;
+
+                currentInput.setCustomValidity("");
+
+                if (gradingMode === "percentage") {
+                    title.textContent =
+                        "Current overall course grade";
+                    unit.textContent = "out of 100";
+                    currentInput.max = "100";
+                    currentInput.placeholder = "e.g. 72";
+                    helper.textContent =
+                        "Your current average from coursework " +
+                        "already graded.";
+                    return;
+                }
+
+                const pointsMaximum = hasValidWeight
+                    ? Math.max(100 - weight, 0)
+                    : null;
+
+                title.textContent = "Points earned so far";
+                unit.innerHTML =
+                    `(out of <span data-current-grade-max>` +
+                    `${pointsMaximum === null
+                        ? "—"
+                        : displayNumber(pointsMaximum)}` +
+                    `</span>)`;
+                currentInput.max =
+                    pointsMaximum === null
+                        ? "100"
+                        : String(pointsMaximum);
+                currentInput.placeholder = "e.g. 60";
+                helper.textContent =
+                    "Enter the cumulative points already earned " +
+                    "before this exam.";
+
+                if (
+                    pointsMaximum !== null
+                    && currentInput.value !== ""
+                    && Number(currentInput.value) > pointsMaximum
+                ) {
+                    currentInput.setCustomValidity(
+                        `Points earned so far cannot exceed ` +
+                        `${displayNumber(pointsMaximum)} for this exam weight.`
+                    );
+                }
+            });
+        }
+
+        function applyGradingMode(gradingMode) {
+            const selectedMode =
+                gradingMode === "percentage"
+                    ? "percentage"
+                    : "points";
+
+            gradingModeOptions.forEach(function (option) {
+                option.checked = option.value === selectedMode;
+            });
+
+            updateCourseGradeFields(selectedMode);
+
+            localStorage.setItem(
+                "syllabalance-grading-mode",
+                selectedMode
+            );
+        }
+
+        function updateExamDateMinimum(scope) {
+            const parent = scope || document;
+
+            parent.querySelectorAll(
+                'input[name="exam_date"]'
+            ).forEach(function (input) {
+                input.min = browserTodayValue;
+            });
+        }
+
+        function validateStudyTime() {
+            if (
+                !totalHoursInput
+                || !maxDailyHoursInput
+                || !studyTimeError
+            ) {
+                return true;
             }
+
+            const total = Number(totalHoursInput.value);
+            const daily = Number(maxDailyHoursInput.value);
+            const capacity = daily * 7;
+
+            let message = "";
+
+            if (
+                totalHoursInput.value !== ""
+                && maxDailyHoursInput.value !== ""
+                && Number.isFinite(total)
+                && Number.isFinite(daily)
+                && daily > 0
+                && total > capacity
+            ) {
+                message =
+                    `With a ${displayNumber(daily)}-hour daily limit, ` +
+                    `you can study at most ` +
+                    `${displayNumber(capacity)} hours this week.`;
+            }
+
+            totalHoursInput.setCustomValidity(message);
+            studyTimeError.textContent = message;
+            studyTimeError.hidden = !message;
+
+            return !message;
         }
 
         function updateCourseNumbers() {
@@ -1340,7 +1557,11 @@
                     courses.length === 1;
             });
 
-            updateSidebarSummary();
+            updateCourseGradeFields(
+                selectedGradingMode()
+            );
+
+            updateExamDateMinimum(courseList);
         }
 
         if (courseList && addCourseButton) {
@@ -1389,16 +1610,69 @@
                 }
             );
 
+            courseList.addEventListener(
+                "input",
+                function (event) {
+                    if (
+                        event.target.name === "assessment_weight"
+                        || event.target.name === "current_grade"
+                    ) {
+                        updateCourseGradeFields(
+                            selectedGradingMode()
+                        );
+                    }
+                }
+            );
+
             updateCourseNumbers();
         }
 
-        if (totalHoursInput) {
+        gradingModeOptions.forEach(function (option) {
+            option.addEventListener(
+                "change",
+                function () {
+                    applyGradingMode(option.value);
+                }
+            );
+        });
+
+        applyGradingMode(
+            localStorage.getItem(
+                "syllabalance-grading-mode"
+            ) || "points"
+        );
+
+        updateExamDateMinimum(document);
+
+        if (totalHoursInput && maxDailyHoursInput) {
             totalHoursInput.addEventListener(
                 "input",
-                updateSidebarSummary
+                validateStudyTime
             );
 
-            updateSidebarSummary();
+            maxDailyHoursInput.addEventListener(
+                "input",
+                validateStudyTime
+            );
+
+            validateStudyTime();
+        }
+
+        if (studyPlanForm) {
+            studyPlanForm.addEventListener(
+                "submit",
+                function (event) {
+                    applyGradingMode(
+                        selectedGradingMode()
+                    );
+
+                    if (!validateStudyTime()) {
+                        event.preventDefault();
+                        totalHoursInput.reportValidity();
+                    }
+                }
+            );
+
         }
 
         const calculator =
@@ -1434,7 +1708,11 @@
                             weight:
                                 Number(
                                     element.dataset.assessmentWeight
-                                )
+                                ),
+
+                            gradingMode:
+                                element.dataset.gradingMode
+                                || "percentage"
                         };
                     }
                 );
@@ -1482,7 +1760,9 @@
                     1 - weightDecimal;
 
                 const currentPart =
-                    course.current * completedDecimal;
+                    course.gradingMode === "points"
+                        ? course.current
+                        : course.current * completedDecimal;
 
                 const assessmentPart =
                     score * weightDecimal;
@@ -1491,7 +1771,9 @@
                     currentPart + assessmentPart;
 
                 const change =
-                    projected - course.current;
+                    course.gradingMode === "points"
+                        ? assessmentPart
+                        : projected - course.current;
 
                 const maximum =
                     currentPart + 100 * weightDecimal;
@@ -1511,7 +1793,17 @@
                 document.getElementById(
                     "context-current-grade"
                 ).textContent =
-                    `${rounded(course.current)} / 100`;
+                    course.gradingMode === "points"
+                        ? `${rounded(course.current)} / ` +
+                          `${rounded(100 - course.weight)}`
+                        : `${rounded(course.current)} / 100`;
+
+                document.getElementById(
+                    "context-current-label"
+                ).textContent =
+                    course.gradingMode === "points"
+                        ? "Points earned so far"
+                        : "Current grade";
 
                 document.getElementById(
                     "context-assessment-weight"
@@ -1533,7 +1825,13 @@
                         "outcome-sentence"
                     );
 
-                if (Math.abs(change) < 0.05) {
+                if (course.gradingMode === "points") {
+                    outcomeSentence.textContent =
+                        `This exam would add ` +
+                        `${rounded(assessmentPart)} course points, ` +
+                        `making your projected overall grade ` +
+                        `${rounded(projected)}.`;
+                } else if (Math.abs(change) < 0.05) {
                     outcomeSentence.textContent =
                         `Your overall grade would remain at ` +
                         `${rounded(projected)}.`;
@@ -1609,11 +1907,20 @@
                 }
 
                 document.getElementById(
+                    "current-calculation-label"
+                ).textContent =
+                    course.gradingMode === "points"
+                        ? "Points earned so far"
+                        : "Current coursework";
+
+                document.getElementById(
                     "current-calculation"
                 ).textContent =
-                    `${rounded(course.current)} × ` +
-                    `${rounded(100 - course.weight)}% = ` +
-                    `${rounded(currentPart)}`;
+                    course.gradingMode === "points"
+                        ? `${rounded(course.current)} points`
+                        : `${rounded(course.current)} × ` +
+                          `${rounded(100 - course.weight)}% = ` +
+                          `${rounded(currentPart)}`;
 
                 document.getElementById(
                     "assessment-calculation"

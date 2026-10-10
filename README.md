@@ -1,58 +1,75 @@
 # Syllabalance
 
-Syllabalance is a Flask-based academic planning tool that helps students decide where their limited study time should go.
+Syllabalance is a Flask-based exam-planning tool that helps students decide where their limited study time should go.
 
-Instead of only listing assignments, it considers grade gaps, assessment weight, deadlines, confidence, course credit hours, and weekly availability. It then ranks competing course priorities, explains the ranking, and produces a realistic study schedule.
-
-## Screenshots
-
-### Course planner
-
-![Syllabalance course planner](docs/screenshots/planner.png)
-
-### Priority results
-
-![Syllabalance priority results](docs/screenshots/results.png)
-
-### Weekly schedule
-
-![Syllabalance weekly schedule](docs/screenshots/schedule.png)
+Instead of simply tracking exam dates, it considers grade gaps, exam weight, urgency, confidence, course credit hours, and weekly availability. It then ranks competing course priorities, explains the ranking, and produces a realistic study schedule.
 
 ## What the application does
 
-- Accepts multiple courses and assessments.
+- Accepts multiple upcoming exams, with each exam entered as a separate item.
 - Ranks courses using an explainable priority model.
 - Allocates a limited number of weekly study hours.
 - Checks whether a target grade is mathematically reachable.
-- Calculates the assessment score required to reach a target.
-- Lets students test possible assessment outcomes.
-- Builds a seven-day study schedule.
+- Calculates the exam score required to reach a target using cumulative-points or percentage grading.
+- Lets students test possible exam outcomes.
+- Builds a deadline-safe seven-day study schedule using Steady, Front-loader, or Deadline-driven distribution.
+- Generates up to three plan-based nudges ordered by urgency.
 - Explains why each course received its ranking.
 - Supports light and dark themes.
 - Stores interface preferences locally in the browser.
 - Does not permanently store entered course information.
 
+## Running the application
+
+### Windows quick start
+
+1. Download or clone the repository.
+2. Open the project folder.
+3. Double-click `OPEN_SYLLABALANCE.bat`.
+4. Keep the command window open while using the application.
+
+The application will open at:
+
+```text
+http://127.0.0.1:5050
+```
+
+### Standard setup
+
+```powershell
+py -m venv .venv
+.venv\Scripts\activate
+py -m pip install -r requirements.txt
+py app.py
+```
+
+Then open:
+
+```text
+http://127.0.0.1:5000
+```
+
 ## Understanding the inputs
 
-### Current course grade
+### Current grade mode
 
-The student's overall course grade so far, entered as a percentage out of 100.
+In **Points earned so far** mode, enter the cumulative course points already earned. The maximum is `100 - exam weight`. For example, when coursework is worth 70 points and the final is worth 30, enter `60` if 60 course points have already been earned.
 
-For example, enter `78` if the current total course grade is 78%.
+In **Average percentage** mode, enter the percentage average across coursework completed before the exam.
 
 ### Target course grade
 
 The overall grade the student wants to achieve by the end of the course, out of 100.
 
-### Upcoming assessment weight
+### Exam weight
 
-How much the upcoming exam, assignment, or project contributes to the final course grade.
+How much the upcoming exam contributes to the final course grade.
 
-For example, enter `30` if the assessment is worth 30% of the course total.
+For example, enter `30` if the exam is worth 30% of the course total.
 
-### Days remaining
+### Exam date
 
-The number of days until the upcoming assessment is due.
+The calendar date of the exam. The scheduler never places a study session on or after this date.
 
 ### Confidence level
 
@@ -76,10 +93,10 @@ The total number of hours the student can realistically study during the selecte
 
 Syllabalance uses several stages:
 
-1. It validates the course information entered by the student.
+1. It validates the course and exam information entered by the student.
 2. It calculates a priority score for each course.
 3. It compares urgency, academic impact, grade gap, confidence, and course load.
-4. It checks whether the target grade is mathematically reachable through the upcoming assessment.
+4. It checks whether the target grade is mathematically reachable through the upcoming exam.
 5. It distributes the available study time across the ranked courses.
 6. It converts those allocations into manageable sessions across seven days.
 7. It generates plain-language explanations for the recommendations.
@@ -94,16 +111,16 @@ Each recommendation includes a short explanation describing the factors that inf
 
 ### Target feasibility analysis
 
-The application calculates the assessment score required to reach the target grade and identifies targets that are currently:
+The application calculates the exam score required to reach the target grade and identifies targets that are currently:
 
 - Within reach
 - Challenging
 - High risk
-- Mathematically impossible through the selected assessment alone
+- Mathematically impossible through the upcoming exam alone
 
-### Assessment what-if calculator
+### Exam what-if calculator
 
-Students can adjust a possible assessment score and immediately see:
+Students can adjust a possible exam score and immediately see:
 
 - The projected overall course grade
 - The change from the current grade
@@ -115,7 +132,23 @@ Available hours are distributed across competing courses while ensuring that the
 
 ### Weekly schedule
 
-The scheduling engine divides allocated time into study sessions across seven days while respecting the selected daily limit.
+The scheduling engine divides allocated time into study sessions across seven days while respecting the selected daily limit and every exam date. The study-style preference changes how those sessions are distributed.
+
+## Running the tests
+
+```powershell
+py -m pytest
+```
+
+## Screenshots
+
+### Exam setup
+
+![Syllabalance exam setup](screenshots/exam-setup.png)
+
+### Generated study plan
+
+![Syllabalance generated study plan](screenshots/study-plan.png)
 
 ## Technology
 
@@ -134,21 +167,23 @@ The scheduling engine divides allocated time into study sessions across seven da
 ```text
 Syllabalance/
 ├── app.py
+├── nudge_engine.py
 ├── priority_engine.py
 ├── schedule_engine.py
+├── OPEN_SYLLABALANCE.bat
 ├── requirements.txt
 ├── README.md
+├── screenshots/
+│   ├── exam-setup.png
+│   └── study-plan.png
 ├── static/
-│   ├── app.js
-│   ├── style.css
-│   └── what_if.js
+│   └── style.css
 ├── templates/
 │   └── index.html
 ├── tests/
+│   ├── test_app.py
+│   ├── test_nudge_engine.py
+│   ├── test_palette.py
 │   ├── test_priority_engine.py
 │   └── test_schedule_engine.py
-└── docs/
-    └── screenshots/
-        ├── planner.png
-        ├── results.png
-        └── schedule.png
+```

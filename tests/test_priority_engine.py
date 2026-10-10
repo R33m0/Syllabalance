@@ -23,6 +23,35 @@ def test_required_grade_calculation():
     )
 
 
+def test_points_mode_uses_cumulative_course_points():
+    result = calculate_required_grade(
+        current_grade=60,
+        target_grade=90,
+        assessment_weight=30,
+        grading_mode="points"
+    )
+
+    assert result["required_grade"] == 100.0
+    assert result["maximum_achievable_grade"] == 90.0
+    assert result["minimum_possible_grade"] == 60.0
+    assert result["status"] == "high_risk"
+
+
+def test_points_mode_rejects_points_above_completed_weight():
+    try:
+        calculate_required_grade(
+            current_grade=61,
+            target_grade=85,
+            assessment_weight=40,
+            grading_mode="points"
+        )
+
+        assert False
+
+    except ValueError as error:
+        assert "cannot exceed 60" in str(error)
+
+
 def test_impossible_target_is_identified():
     result = calculate_required_grade(
         current_grade=70,

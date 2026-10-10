@@ -1,28 +1,8 @@
-# Virtual environment
 .venv/
-venv/
-
-# Python cache
 __pycache__/
 *.py[cod]
-*$py.class
-
-# Testing cache
 .pytest_cache/
-.coverage
-htmlcov/
-
-# Environment variables
-.env
-.env.*
-
-# Editors
 .vscode/
-.idea/
-
-# Operating system files
-.DS_Store
-Thumbs.db
-
-# Logs
+.env
 *.log
+Thumbs.db

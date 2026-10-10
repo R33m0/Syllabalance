@@ -6,24 +6,20 @@ def calculate_required_grade(
     current_grade,
     target_grade,
     assessment_weight,
-    grade_mode="percent"
+    grading_mode="percentage"
 ):
     """
     Calculate the exam grade required to reach
     a target course grade.
 
-    Two grading modes are supported:
-
-    - "points": current_grade is the number of points already
-      earned out of (100 - assessment_weight). For example, 60
-      points out of 70 before a final worth 30.
-    - "percent": current_grade is the average percentage across
-      coursework completed before the exam.
+    In points mode, current_grade is the cumulative number
+    of course points already earned. In percentage mode, it
+    is the average across coursework completed before the exam.
     """
 
-    if not 0 < assessment_weight <= 100:
+    if not 0 <= current_grade <= 100:
         raise ValueError(
-            "Exam weight must be greater than 0."
+            "Current grade must be between 0 and 100."
         )
 
     if not 0 <= target_grade <= 100:
@@ -31,26 +27,33 @@ def calculate_required_grade(
             "Target grade must be between 0 and 100."
         )
 
+    if not 0 < assessment_weight <= 100:
+        raise ValueError(
+            "Exam weight must be greater than 0."
+        )
+
+    if grading_mode not in {"points", "percentage"}:
+        raise ValueError(
+            "Grading mode must be points or percentage."
+        )
+
+    completed_points_available = 100 - assessment_weight
+
+    if (
+        grading_mode == "points"
+        and current_grade > completed_points_available
+    ):
+        raise ValueError(
+            "Points earned so far cannot exceed "
+            f"{completed_points_available:g} when the exam "
+            f"is worth {assessment_weight:g}%."
+        )
+
     assessment_ratio = assessment_weight / 100
-    completed_ratio = 1 - assessment_ratio
-
-    if grade_mode == "points":
-        available_points = round(100 - assessment_weight, 1)
-
-        if not 0 <= current_grade <= available_points:
-            raise ValueError(
-                f"Points earned can't be more than "
-                f"{available_points:g} when the exam is worth "
-                f"{assessment_weight:g}%."
-            )
-
+    if grading_mode == "points":
         completed_contribution = current_grade
     else:
-        if not 0 <= current_grade <= 100:
-            raise ValueError(
-                "Current grade must be between 0 and 100."
-            )
-
+        completed_ratio = 1 - assessment_ratio
         completed_contribution = (
             current_grade * completed_ratio
         )
@@ -206,17 +209,23 @@ def create_priority_explanation(course):
         "The exam"
     )
 
-    current_average = course.get(
-        "current_average",
-        course["current_grade"]
+    grade_gap = (
+        course["target_grade"]
+        - course["current_grade"]
     )
 
-    grade_gap = round(
-        course["target_grade"] - current_average,
-        1
-    )
+    if course.get("grading_mode") == "points":
+        if grade_gap > 0:
+            reasons.append(
+                f"{grade_gap:g} more course points are needed "
+                "to reach the target"
+            )
+        else:
+            reasons.append(
+                "the points already earned meet the target"
+            )
 
-    if grade_gap >= 15:
+    elif grade_gap >= 15:
         reasons.append(
             f"a {grade_gap:g}-point gap remains "
             "between the current and target grade"
@@ -278,15 +287,8 @@ def rank_courses(courses):
     ranked_courses = []
 
     for course in courses:
-        grade_mode = course.get("grade_mode", "percent")
-
-        current_average = course.get(
-            "current_average",
-            course["current_grade"]
-        )
-
         score = calculate_priority(
-            current_grade=current_average,
+            current_grade=course["current_grade"],
             target_grade=course["target_grade"],
             assessment_weight=course[
                 "assessment_weight"
@@ -302,7 +304,10 @@ def rank_courses(courses):
             assessment_weight=course[
                 "assessment_weight"
             ],
-            grade_mode=grade_mode
+            grading_mode=course.get(
+                "grading_mode",
+                "percentage"
+            )
         )
 
         course_result = course.copy()

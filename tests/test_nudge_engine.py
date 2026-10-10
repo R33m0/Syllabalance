@@ -35,10 +35,7 @@ def test_nudges_are_limited_and_urgency_ranked():
         }
     ]
 
-    nudges = build_plan_nudges(
-        courses,
-        limit=2
-    )
+    nudges = build_plan_nudges(courses, limit=2)
 
     assert len(nudges) == 2
     assert "2 days" in nudges[0]["short"]
